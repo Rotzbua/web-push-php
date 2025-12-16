@@ -5,7 +5,7 @@ namespace Minishlink\WebPush;
 enum ContentEncoding: string
 {
     /** Not recommended. Outdated historic encoding. Was used by some browsers before rfc standard. */
-    case aesgcm = "aesgcm";
+    case aesgcm = 'aesgcm';
     /** Defined in rfc8291. */
-    case aes128gcm = "aes128gcm";
+    case aes128gcm = 'aes128gcm';
 }

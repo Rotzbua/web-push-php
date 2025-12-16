@@ -7,6 +7,7 @@ $rules  = [
     '@autoPHPMigration'                   => true, // Uses min PHP version for regular migrations.
     'blank_line_after_opening_tag'        => false, // Do not waste space between <?php and declare.
     'declare_strict_types'                => true,
+    'single_quote'                        => true,
     'global_namespace_import'             => ['import_classes' => false, 'import_constants' => false, 'import_functions' => false],
     'php_unit_attributes'                 => true,
     'php_unit_construct'                  => true,
