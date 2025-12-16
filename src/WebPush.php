@@ -15,25 +15,59 @@ namespace Minishlink\WebPush;
 
 use Base64Url\Base64Url;
 use GuzzleHttp\Client;
-use GuzzleHttp\Pool;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Pool;
 use GuzzleHttp\Psr7\Request;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
+/**
+ *
+ * @phpstan-type AuthArray array{
+ *     VAPID?: mixed
+ * }
+ * @phpstan-type VAPIDArray array{
+ *     Authorization: string,
+ *     Crypto-Key?: string
+ *   }
+ * @phpstan-type WebPushOptions array{
+ *     TTL: int,
+ *     urgency: string|null,
+ *     topic: string|null,
+ *     batchSize: int,
+ *     requestConcurrency: int,
+ *     contentType: string
+ * }
+ *
+ * @phpstan-type WebPushOptionsInput array{
+ *     TTL?: int,
+ *     urgency?: string,
+ *     topic?: string,
+ *     batchSize?: int,
+ *     requestConcurrency?: int,
+ *     contentType?: string
+ * }
+ */
 class WebPush
 {
     protected Client $client;
+    /**
+     * @var AuthArray
+     */
     protected array $auth;
 
     /**
-     * @var null|array Array of array of Notifications
+     * @var list<Notification> Array of notifications.
      */
-    protected ?array $notifications = null;
+    protected array $notifications = [];
 
     /**
-     * @var array Default options: TTL, urgency, topic, batchSize, requestConcurrency
+     * @var WebPushOptions Default options of the class. Used if option is not set or overridden.
+     */
+    public readonly array $fallbackOptions;
+
+    /**
+     * @var WebPushOptions Used as default for every push message processed.
      */
     protected array $defaultOptions;
 
@@ -48,22 +82,36 @@ class WebPush
     protected bool $reuseVAPIDHeaders = false;
 
     /**
-     * @var array Dictionary for VAPID headers cache
+     * @var array<string, VAPIDArray> Dictionary for VAPID headers cache
      */
     protected array $vapidHeaders = [];
 
     /**
      * WebPush constructor.
      *
-     * @param array    $auth           Some servers need authentication
-     * @param array    $defaultOptions TTL, urgency, topic, batchSize, requestConcurrency
-     * @param int|null $timeout        Timeout of POST request
+     * @param AuthArray                     $auth           Some servers need authentication
+     * @param WebPushOptionsInput           $defaultOptions TTL, urgency, topic, batchSize, requestConcurrency
+     * @param int|null                      $timeout        Timeout of POST request
+     * @param array{RequestOptions?: mixed} $clientOptions
      *
      * @throws \ErrorException
      */
-    public function __construct(array $auth = [], array $defaultOptions = [], ?int $timeout = 30, array $clientOptions = [])
-    {
+    public function __construct(
+        array $auth = [],
+        array $defaultOptions = [],
+        ?int  $timeout = 30,
+        array $clientOptions = []
+    ) {
         Utils::checkRequirement();
+
+        $this->fallbackOptions = [
+            'TTL'                => 2419200,
+            'urgency'            => null,
+            'topic'              => null,
+            'batchSize'          => 1000,
+            'requestConcurrency' => 100,
+            'contentType'        => 'application/octet-stream',
+        ];
 
         if (isset($auth['VAPID'])) {
             $auth['VAPID'] = VAPID::validate($auth['VAPID']);
@@ -83,19 +131,23 @@ class WebPush
      * Queue a notification. Will be sent when flush() is called.
      *
      * @param string|null $payload If you want to send an array or object, json_encode it
-     * @param array $options Array with several options tied to this notification. If not set, will use the default options that you can set in the WebPush object
-     * @param array $auth Use this auth details instead of what you provided when creating WebPush
+     * @param WebPushOptionsInput $options Array with several options tied to this notification. If not set, will use the default options that you can set in the WebPush object
+     * @param AuthArray $auth Use this auth details instead of what you provided when creating WebPush
      * @throws \ErrorException
      */
-    public function queueNotification(SubscriptionInterface $subscription, ?string $payload = null, array $options = [], array $auth = []): void
-    {
+    public function queueNotification(
+        SubscriptionInterface $subscription,
+        ?string               $payload = null,
+        array                 $options = [],
+        array                 $auth = []
+    ): void {
         if (isset($payload)) {
             if (Utils::safeStrlen($payload) > Encryption::MAX_PAYLOAD_LENGTH) {
                 throw new \ErrorException('Size of payload must not be greater than '.Encryption::MAX_PAYLOAD_LENGTH.' octets.');
             }
 
             $contentEncoding = $subscription->getContentEncoding();
-            if (!$contentEncoding) {
+            if (null === $contentEncoding || '' === $contentEncoding) {
                 throw new \ErrorException('Subscription should have a content encoding');
             }
 
@@ -111,12 +163,16 @@ class WebPush
 
     /**
      * @param string|null $payload If you want to send an array or object, json_encode it
-     * @param array $options Array with several options tied to this notification. If not set, will use the default options that you can set in the WebPush object
-     * @param array $auth Use this auth details instead of what you provided when creating WebPush
+     * @param WebPushOptionsInput $options Array with several options tied to this notification. If not set, will use the default options that you can set in the WebPush object
+     * @param AuthArray $auth Use this auth details instead of what you provided when creating WebPush
      * @throws \ErrorException
      */
-    public function sendOneNotification(SubscriptionInterface $subscription, ?string $payload = null, array $options = [], array $auth = []): MessageSentReport
-    {
+    public function sendOneNotification(
+        SubscriptionInterface $subscription,
+        ?string               $payload = null,
+        array                 $options = [],
+        array                 $auth = []
+    ): MessageSentReport|null {
         $this->queueNotification($subscription, $payload, $options, $auth);
         return $this->flush()->current();
     }
@@ -132,7 +188,7 @@ class WebPush
      */
     public function flush(?int $batchSize = null): \Generator
     {
-        if (empty($this->notifications)) {
+        if (0 === count($this->notifications)) {
             yield from [];
             return;
         }
@@ -141,6 +197,9 @@ class WebPush
             $batchSize = $this->defaultOptions['batchSize'];
         }
 
+        if ($batchSize < 1) {
+            throw new \InvalidArgumentException('$batchSize must be positive non-zero integer.');
+        }
         $batches = array_chunk($this->notifications, $batchSize);
 
         // reset queue
@@ -192,22 +251,29 @@ class WebPush
             $requestConcurrency = $this->defaultOptions['requestConcurrency'];
         }
 
+        if ($batchSize < 1) {
+            throw new \InvalidArgumentException('$batchSize must be positive non-zero integer.');
+        }
+
         $batches = array_chunk($this->notifications, $batchSize);
         $this->notifications = [];
 
         foreach ($batches as $batch) {
             $batch = $this->prepare($batch);
-            $pool = new Pool($this->client, $batch, [
-                'concurrency' => $requestConcurrency,
-                'fulfilled' => function (ResponseInterface $response, int $index) use ($callback, $batch): void {
-                    /** @var RequestInterface $request **/
-                    $request = $batch[$index];
-                    $callback(new MessageSentReport($request, $response));
-                },
-                'rejected' => function ($reason) use ($callback): void {
-                    $callback($this->createRejectedReport($reason));
-                },
-            ]);
+            $pool  = new Pool(
+                $this->client,
+                $batch,
+                [
+                    'concurrency' => $requestConcurrency,
+                    'fulfilled'   => function (ResponseInterface $response, int $index) use ($callback, $batch): void {
+                        $request = $batch[$index];
+                        $callback(new MessageSentReport($request, $response));
+                    },
+                    'rejected'    => function ($reason) use ($callback): void {
+                        $callback($this->createRejectedReport($reason));
+                    },
+                ],
+            );
 
             $promise = $pool->promise();
             $promise->wait();
@@ -230,6 +296,9 @@ class WebPush
     }
 
     /**
+     * @param array{Notification} $notifications
+     * @return array{Request}
+     *
      * @throws \ErrorException Thrown on php 8.1
      * @throws \Random\RandomException Thrown on php 8.2 and higher
      */
@@ -237,7 +306,9 @@ class WebPush
     {
         $requests = [];
         foreach ($notifications as $notification) {
-            \assert($notification instanceof Notification);
+            if (!($notification instanceof Notification)) {
+                throw new \RuntimeException('$notification must be instance of Notification.');
+            }
             $subscription = $notification->getSubscription();
             $endpoint = $subscription->getEndpoint();
             $userPublicKey = $subscription->getPublicKey();
@@ -248,7 +319,7 @@ class WebPush
             $auth = $notification->getAuth($this->auth);
 
             if (!empty($payload) && !empty($userPublicKey) && !empty($userAuthToken)) {
-                if (!$contentEncoding) {
+                if (null === $contentEncoding || '' === $contentEncoding) {
                     throw new \ErrorException('Subscription should have a content encoding');
                 }
 
@@ -289,9 +360,9 @@ class WebPush
                 $headers['Topic'] = $options['topic'];
             }
 
-            if (array_key_exists('VAPID', $auth) && $contentEncoding) {
+            if (array_key_exists('VAPID', $auth) && (null !== $contentEncoding && '' !== $contentEncoding)) {
                 $audience = parse_url($endpoint, PHP_URL_SCHEME).'://'.parse_url($endpoint, PHP_URL_HOST);
-                if (!parse_url($audience)) {
+                if (false === filter_var($audience, FILTER_VALIDATE_URL)) {
                     throw new \ErrorException('Audience "'.$audience.'"" could not be generated.');
                 }
 
@@ -299,7 +370,10 @@ class WebPush
 
                 $headers['Authorization'] = $vapidHeaders['Authorization'];
 
-                if ($contentEncoding === ContentEncoding::aesgcm->value) {
+                if (
+                    $contentEncoding === ContentEncoding::aesgcm->value
+                    && array_key_exists('Crypto-Key', $vapidHeaders)
+                ) {
                     if (array_key_exists('Crypto-Key', $headers)) {
                         $headers['Crypto-Key'] .= ';'.$vapidHeaders['Crypto-Key'];
                     } else {
@@ -364,33 +438,41 @@ class WebPush
         return $this;
     }
 
+    /**
+     * @return WebPushOptions
+     */
     public function getDefaultOptions(): array
     {
         return $this->defaultOptions;
     }
 
     /**
-     * @param array $defaultOptions Keys 'TTL' (Time To Live, defaults 4 weeks), 'urgency', 'topic', 'batchSize', 'requestConcurrency'
+     * @param WebPushOptionsInput $defaultOptions
      */
     public function setDefaultOptions(array $defaultOptions): WebPush
     {
-        $this->defaultOptions['TTL'] = $defaultOptions['TTL'] ?? 2419200;
-        $this->defaultOptions['urgency'] = $defaultOptions['urgency'] ?? null;
-        $this->defaultOptions['topic'] = $defaultOptions['topic'] ?? null;
-        $this->defaultOptions['batchSize'] = $defaultOptions['batchSize'] ?? 1000;
-        $this->defaultOptions['requestConcurrency'] = $defaultOptions['requestConcurrency'] ?? 100;
-        $this->defaultOptions['contentType'] = $defaultOptions['contentType'] ?? 'application/octet-stream';
-
+        $this->defaultOptions['TTL'] = $defaultOptions['TTL'] ?? $this->fallbackOptions['TTL'];
+        $this->defaultOptions['urgency'] = $defaultOptions['urgency'] ?? $this->fallbackOptions['urgency'];
+        $this->defaultOptions['topic'] = $defaultOptions['topic'] ?? $this->fallbackOptions['topic'];
+        $this->defaultOptions['batchSize'] = $defaultOptions['batchSize'] ?? $this->fallbackOptions['batchSize'];
+        $this->defaultOptions['requestConcurrency'] = $defaultOptions['requestConcurrency'] ?? $this->fallbackOptions['requestConcurrency'];
+        $this->defaultOptions['contentType'] = $defaultOptions['contentType'] ?? $this->fallbackOptions['contentType'];
 
         return $this;
     }
 
     public function countPendingNotifications(): int
     {
-        return null !== $this->notifications ? count($this->notifications) : 0;
+        return count($this->notifications);
     }
 
     /**
+     * @param array{
+     *     subject: string,
+     *     publicKey: string,
+     *     privateKey: string
+     * } $vapid
+     * @return VAPIDArray|null
      * @throws \ErrorException
      */
     protected function getVAPIDHeaders(string $audience, ContentEncoding $contentEncoding, array $vapid): ?array
@@ -405,7 +487,7 @@ class WebPush
             }
         }
 
-        if (!$vapidHeaders) {
+        if (null === $vapidHeaders) {
             $vapidHeaders = VAPID::getVapidHeaders($audience, $vapid['subject'], $vapid['publicKey'], $vapid['privateKey'], $contentEncoding);
         }
 

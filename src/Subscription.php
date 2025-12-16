@@ -28,7 +28,11 @@ class Subscription implements SubscriptionInterface
         private ?string $authToken = null,
         ContentEncoding|string|null $contentEncoding = null,
     ) {
-        if ($publicKey || $authToken || $contentEncoding) {
+        if (
+            (null !== $publicKey && '' !== $publicKey)
+            || (null !== $authToken && '' !== $authToken)
+            || null !== $contentEncoding
+        ) {
             if (is_string($contentEncoding)) {
                 try {
                     if (empty($contentEncoding)) {
@@ -47,7 +51,16 @@ class Subscription implements SubscriptionInterface
     }
 
     /**
-     * @param array $associativeArray (with keys endpoint, publicKey, authToken, contentEncoding)
+     * @param array{
+     *     endpoint: string,
+     *     keys?: array{
+     *         p256dh?: string|null,
+     *         auth?: string|null
+     *     },
+     *     publicKey?: string|null,
+     *     authToken?: string|null,
+     *     contentEncoding?: ContentEncoding|null
+     * } $associativeArray
      * @throws \ErrorException
      */
     public static function create(array $associativeArray): self

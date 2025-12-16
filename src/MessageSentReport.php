@@ -62,7 +62,7 @@ class MessageSentReport implements \JsonSerializable
 
     public function isSubscriptionExpired(): bool
     {
-        if (!$this->response) {
+        if (null === $this->response) {
             return false;
         }
 
@@ -90,6 +90,15 @@ class MessageSentReport implements \JsonSerializable
         return $this->response?->getBody()->getContents();
     }
 
+    /**
+     * @return array{
+     *     success: bool,
+     *     expired: bool,
+     *     reason: string,
+     *     endpoint: string,
+     *     payload: string,
+     * }
+     */
     public function jsonSerialize(): array
     {
         return [
