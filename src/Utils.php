@@ -34,15 +34,32 @@ class Utils
         return $hexString;
     }
 
+    /**
+     * @throws \ErrorException
+     */
     public static function serializePublicKeyFromJWK(JWK $jwk): string
     {
+        $x = $jwk->get('x');
+        $y = $jwk->get('y');
+        if (!is_string($x) || !is_string($y)) {
+            throw new \ErrorException('JWK "x" and "y" must be strings.');
+        }
+
         $hexString = '04';
-        $hexString .= str_pad(bin2hex(Base64Url::decode($jwk->get('x'))), 64, '0', STR_PAD_LEFT);
-        $hexString .= str_pad(bin2hex(Base64Url::decode($jwk->get('y'))), 64, '0', STR_PAD_LEFT);
+        $hexString .= str_pad(bin2hex(Base64Url::decode($x)), 64, '0', STR_PAD_LEFT);
+        $hexString .= str_pad(bin2hex(Base64Url::decode($y)), 64, '0', STR_PAD_LEFT);
 
         return $hexString;
     }
 
+    /**
+     * Splits an uncompressed EC public key into its X and Y coordinates.
+     *
+     * @param string $data Uncompressed EC public key in binary form
+     * @return array{0: string, 1: string} [X, Y] coordinates as binary strings.
+     *
+     * @throws \InvalidArgumentException
+     */
     public static function unserializePublicKey(string $data): array
     {
         $data = bin2hex($data);
@@ -52,9 +69,15 @@ class Utils
         $data = mb_substr($data, 2, null, '8bit');
         $dataLength = self::safeStrlen($data);
 
+        $x = hex2bin(mb_substr($data, 0, $dataLength / 2, '8bit'));
+        $y = hex2bin(mb_substr($data, $dataLength / 2, null, '8bit'));
+
+        if ($x === false || $y === false) {
+            throw new \InvalidArgumentException('Invalid data: could not split EC key.');
+        }
         return [
-            hex2bin(mb_substr($data, 0, $dataLength / 2, '8bit')),
-            hex2bin(mb_substr($data, $dataLength / 2, null, '8bit')),
+            $x,
+            $y,
         ];
     }
 
