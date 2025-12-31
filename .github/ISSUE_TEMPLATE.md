@@ -1,5 +1,5 @@
-**NOTE**: Please test in a least two browsers (i.e. Chrome and Firefox). This
-helps with diagnosing problems quicker.
+**NOTE**: Please test in at least two browsers (i.e. Chrome and Firefox).
+This helps with diagnosing problems quicker.
 
 > Please confirm the following:
 
@@ -8,14 +8,13 @@ helps with diagnosing problems quicker.
 
 # Setup
 
-> Please provide the following details, the more info you can provide the
-> better.
+> Please provide the following details, the more info you can provide the better.
 
 * *Operating System*: <Linux | Windows | OS X>
-* *PHP Version*: <8.0 | 8.1 | ...>
-* *web-push-php Version*: <8.0.0>
+* *PHP Version*: <8.3 | 8.4 | ...>
+* *web-push-php Version*: <10.0.0>
 
-> Please check that you have installed and enabled these PHP extensions :
+> Please check that you have installed and enabled these PHP extensions:
 
 - [ ] curl
 - [ ] gmp
