@@ -5,9 +5,10 @@ parameters:
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         - identifier: missingType.iterableValue
+          path: src/Notification.php
     strictRules:
-        booleansInConditions: false
         disallowedEmpty: false
+    treatPhpDocTypesAsCertain: false
 
 includes:
     - vendor/phpstan/phpstan-strict-rules/rules.neon

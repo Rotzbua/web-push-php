@@ -98,11 +98,11 @@ $notifications = [
 
 $webPush = new WebPush();
 
-// send multiple notifications with payload
-foreach ($notifications as $notification) {
-    $webPush->queueNotification(
-        $notification['subscription'],
-        $notification['payload'] // optional (defaults null)
+// send multiple messages with payload
+foreach ($messages as $message) {
+    $webPush->queueMessage(
+        $message['subscription'],
+        $message['payload'] // optional (defaults null)
     );
 }
 
@@ -154,7 +154,7 @@ $auth = [
 ];
 
 $webPush = new WebPush($auth);
-$webPush->queueNotification(...);
+$webPush->queueMessage(...);
 ```
 
 In order to generate the uncompressed public and secret key, encoded in Base64, enter the following in your Linux bash:
@@ -247,7 +247,7 @@ Especially newer [Declarative push messages](https://www.w3.org/TR/push-api/#dec
 
 You can see what the browser vendor's server sends back in case it encountered an error (push subscription expiration, wrong parameters...).
 
-* `sendOneNotification()` returns a [`MessageSentReport`](https://github.com/web-push-libs/web-push-php/blob/master/src/MessageSentReport.php)
+* `sendOneMessage()` returns a [`MessageSentReport`](https://github.com/web-push-libs/web-push-php/blob/master/src/MessageSentReport.php)
 * `flush()` returns a [`\Generator`](https://www.php.net/manual/en/language.generators.php) with [`MessageSentReport`](https://github.com/web-push-libs/web-push-php/blob/master/src/MessageSentReport.php) objects. To loop through the results, just pass it into `foreach`. You can also use [`iterator_to_array`](https://php.net/manual/en/function.iterator-to-array.php) to check the contents while debugging.
 
 ```php

@@ -27,6 +27,19 @@ class VAPID
     private const PRIVATE_KEY_LENGTH = 32;
 
     /**
+     * @param array{
+     *      subject?: string,
+     *      publicKey?: string,
+     *      privateKey?: string,
+     *      pem?: string,
+     *      pemFile?: string
+     *  } $vapid Raw VAPID configuration.
+     *
+     * @return array{
+     *      subject: string,
+     *      publicKey: string,
+     *      privateKey: string
+     *  }
      * @throws \ErrorException
      */
     public static function validate(array $vapid): array
@@ -38,7 +51,7 @@ class VAPID
         if (isset($vapid['pemFile'])) {
             $vapid['pem'] = file_get_contents($vapid['pemFile']);
 
-            if (!$vapid['pem']) {
+            if (false === $vapid['pem']) {
                 throw new \ErrorException('Error loading PEM file.');
             }
         }
@@ -50,11 +63,15 @@ class VAPID
             }
 
             $binaryPublicKey = hex2bin(Utils::serializePublicKeyFromJWK($jwk));
-            if (!$binaryPublicKey) {
+            if (false === $binaryPublicKey) {
                 throw new \ErrorException('Failed to convert VAPID public key from hexadecimal to binary');
             }
             $vapid['publicKey'] = base64_encode($binaryPublicKey);
-            $vapid['privateKey'] = base64_encode(str_pad(Base64Url::decode($jwk->get('d')), self::PRIVATE_KEY_LENGTH, '0', STR_PAD_LEFT));
+            $d = $jwk->get('d');
+            if (!is_string($d)) {
+                throw new \ErrorException('Invalid private key.');
+            }
+            $vapid['privateKey'] = base64_encode(str_pad(Base64Url::decode($d), self::PRIVATE_KEY_LENGTH, '0', STR_PAD_LEFT));
         }
 
         if (!isset($vapid['publicKey'])) {
@@ -88,13 +105,16 @@ class VAPID
      * This method takes the required VAPID parameters and returns the required
      * header to be added to a Web Push Protocol Request.
      *
-     * @param string $audience This must be the origin of the push service
-     * @param string $subject This should be a URL or a 'mailto:' email address
-     * @param string $publicKey The decoded VAPID public key
-     * @param string $privateKey The decoded VAPID private key
+     * @param string $audience This must be the origin of the push service.
+     * @param string $subject This should be a URL or a 'mailto:' email address.
+     * @param string $publicKey The decoded VAPID public key.
+     * @param string $privateKey The decoded VAPID private key.
      * @param null|int $expiration The expiration of the VAPID JWT. (UNIX timestamp)
      *
-     * @return array Returns an array with the 'Authorization' and 'Crypto-Key' values to be used as headers
+     * @return array{
+     *     Authorization: string,
+     *     Crypto-Key?: string
+     * } HTTP headers for Guzzle.
      * @throws \ErrorException
      */
     public static function getVapidHeaders(
@@ -121,7 +141,7 @@ class VAPID
             'exp' => $expiration,
             'sub' => $subject,
         ], JSON_UNESCAPED_SLASHES | JSON_NUMERIC_CHECK);
-        if (!$jwtPayload) {
+        if (false === $jwtPayload) {
             throw new \ErrorException('Failed to encode JWT payload in JSON');
         }
 
@@ -159,13 +179,14 @@ class VAPID
         }
 
         // @phpstan-ignore deadCode.unreachable
-        throw new \ErrorException('This content encoding is not supported');
+        throw new \ErrorException('This content encoding is not supported.');
     }
 
     /**
      * This method creates VAPID keys in case you would not be able to have a Linux bash.
      * DO NOT create keys at each initialization! Save those keys and reuse them.
      *
+     * @return array{publicKey: string, privateKey: string}
      * @throws \ErrorException
      */
     public static function createVapidKeys(): array
@@ -173,12 +194,16 @@ class VAPID
         $jwk = JWKFactory::createECKey('P-256');
 
         $binaryPublicKey = hex2bin(Utils::serializePublicKeyFromJWK($jwk));
-        if (!$binaryPublicKey) {
+        if (false === $binaryPublicKey) {
             throw new \ErrorException('Failed to convert VAPID public key from hexadecimal to binary');
         }
 
-        $binaryPrivateKey = hex2bin(str_pad(bin2hex(Base64Url::decode($jwk->get('d'))), 2 * self::PRIVATE_KEY_LENGTH, '0', STR_PAD_LEFT));
-        if (!$binaryPrivateKey) {
+        $d = $jwk->get('d');
+        if (!is_string($d)) {
+            throw new \ErrorException('Invalid private key.');
+        }
+        $binaryPrivateKey = hex2bin(str_pad(bin2hex(Base64Url::decode($d)), 2 * self::PRIVATE_KEY_LENGTH, '0', STR_PAD_LEFT));
+        if (false === $binaryPrivateKey) {
             throw new \ErrorException('Failed to convert VAPID private key from hexadecimal to binary');
         }
 

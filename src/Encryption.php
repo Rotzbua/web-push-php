@@ -14,6 +14,7 @@ namespace Minishlink\WebPush;
 use Base64Url\Base64Url;
 use Jose\Component\Core\JWK;
 use Jose\Component\Core\Util\Ecc\PrivateKey;
+use Jose\Component\Core\Util\Ecc\PublicKey;
 use Jose\Component\Core\Util\ECKey;
 
 class Encryption
@@ -27,8 +28,12 @@ class Encryption
      */
     public static function padPayload(string $payload, int $maxLengthToPad, ContentEncoding $contentEncoding): string
     {
+        if ($maxLengthToPad < 0) {
+            throw new \InvalidArgumentException('Must be a non-negative length.');
+        }
+
         $payloadLen = Utils::safeStrlen($payload);
-        $padLen = $maxLengthToPad ? $maxLengthToPad - $payloadLen : 0;
+        $padLen = 0 !== $maxLengthToPad ? $maxLengthToPad - $payloadLen : 0;
 
         if ($contentEncoding === ContentEncoding::aesgcm) {
             return pack('n*', $padLen).str_pad($payload, $padLen + $payloadLen, chr(0), STR_PAD_LEFT);
@@ -38,15 +43,21 @@ class Encryption
         }
 
         // @phpstan-ignore deadCode.unreachable
-        throw new \ErrorException("This content encoding is not implemented.");
+        throw new \ErrorException('This content encoding is not implemented.');
     }
 
     /**
-     * @param string $payload With padding
+     * @param string $payload       With padding
      * @param string $userPublicKey Base 64 encoded (MIME or URL-safe)
      * @param string $userAuthToken Base 64 encoded (MIME or URL-safe)
-     *
+     * @return array{
+     *     localPublicKey: string,
+     *     salt: string,
+     *     cipherText: string
+     * }
+
      * @throws \Random\RandomException Thrown on php 8.2 and higher
+     * @throws \ErrorException
      */
     public static function encrypt(
         string $payload,
@@ -66,6 +77,12 @@ class Encryption
     }
 
     /**
+     * @param array{0: JWK}|array{0: PublicKey, 1: PrivateKey} $localKeyObject
+     * @return array{
+     *      localPublicKey: string,
+     *      salt: string,
+     *      cipherText: string
+     *  }
      * @throws \RuntimeException|\ErrorException
      */
     public static function deterministicEncrypt(
@@ -86,6 +103,7 @@ class Encryption
             $localJwk = current($localKeyObject);
             $localPublicKey = hex2bin(Utils::serializePublicKeyFromJWK($localJwk));
         } else {
+            /** @var PublicKey $localPublicKeyObject */
             /** @var PrivateKey $localPrivateKeyObject */
             [$localPublicKeyObject, $localPrivateKeyObject] = $localKeyObject;
             $localPublicKey = hex2bin(Utils::serializePublicKey($localPublicKeyObject));
@@ -93,11 +111,13 @@ class Encryption
                 'kty' => 'EC',
                 'crv' => 'P-256',
                 'd' => Base64Url::encode($localPrivateKeyObject->getSecret()->toBytes(false)),
+                // @phpstan-ignore offsetAccess.nonOffsetAccessible
                 'x' => Base64Url::encode($localPublicKeyObject[0]),
+                // @phpstan-ignore offsetAccess.nonOffsetAccessible
                 'y' => Base64Url::encode($localPublicKeyObject[1]),
             ]);
         }
-        if (!$localPublicKey) {
+        if (false === $localPublicKey) {
             throw new \RuntimeException('Failed to convert local public key from hexadecimal to binary.');
         }
 
@@ -230,7 +250,7 @@ class Encryption
     private static function createInfo(string $type, ?string $context, ContentEncoding $contentEncoding): string
     {
         if ($contentEncoding === ContentEncoding::aesgcm) {
-            if (!$context) {
+            if (null === $context || '' === $context) {
                 throw new \ValueError('Context must exist.');
             }
 
@@ -249,18 +269,24 @@ class Encryption
         throw new \ErrorException('This content encoding is not implemented.');
     }
 
+    /**
+     * @return array{
+     *     0: JWK
+     * }
+     * @throws \RuntimeException
+     */
     private static function createLocalKeyObject(): array
     {
         $keyResource = openssl_pkey_new([
             'curve_name'       => 'prime256v1',
             'private_key_type' => OPENSSL_KEYTYPE_EC,
         ]);
-        if (!$keyResource) {
+        if (false === $keyResource) {
             throw new \RuntimeException('Unable to create the local key.');
         }
 
         $details = openssl_pkey_get_details($keyResource);
-        if (!$details) {
+        if (false === $details) {
             throw new \RuntimeException('Unable to get the local key details.');
         }
 
