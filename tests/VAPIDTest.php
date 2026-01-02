@@ -13,6 +13,7 @@ use Minishlink\WebPush\Utils;
 use Minishlink\WebPush\VAPID;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
 
 #[CoversClass(VAPID::class)]
 final class VAPIDTest extends PHPUnit\Framework\TestCase
@@ -23,24 +24,24 @@ final class VAPIDTest extends PHPUnit\Framework\TestCase
             [
                 'http://push.com',
                 [
-                    'subject' => 'http://test.com',
+                    'subject' => 'https://test.com',
                     'publicKey' => 'BA6jvk34k6YjElHQ6S0oZwmrsqHdCNajxcod6KJnI77Dagikfb--O_kYXcR2eflRz6l3PcI2r8fPCH3BElLQHDk',
                     'privateKey' => '-3CdhFOqjzixgAbUSa0Zv9zi-dwDVmWO7672aBxSFPQ',
                 ],
                 ContentEncoding::aesgcm,
                 1475452165,
-                'WebPush eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwOi8vcHVzaC5jb20iLCJleHAiOjE0NzU0NTIxNjUsInN1YiI6Imh0dHA6Ly90ZXN0LmNvbSJ9.4F3ZKjeru4P9XM20rHPNvGBcr9zxhz8_ViyNfe11_xcuy7A9y7KfEPt6yuNikyW7eT9zYYD5mQZubDGa-5H2cA',
+                'WebPush eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwOi8vcHVzaC5jb20iLCJleHAiOjE0NzU0NTIxNjUsInN1YiI6Imh0dHBzOi8vdGVzdC5jb20ifQ.JFr6qZp7_1tXtAbkdEFjZtGYAeAyQvQPOJQu7FQcbuvA2JwHsb65YlMUOFPG2qGImaESrHdO-G7blkUP5XHOYw',
                 'p256ecdsa=BA6jvk34k6YjElHQ6S0oZwmrsqHdCNajxcod6KJnI77Dagikfb--O_kYXcR2eflRz6l3PcI2r8fPCH3BElLQHDk',
             ], [
                 'http://push.com',
                 [
-                    'subject' => 'http://test.com',
+                    'subject' => 'https://test.com',
                     'publicKey' => 'BA6jvk34k6YjElHQ6S0oZwmrsqHdCNajxcod6KJnI77Dagikfb--O_kYXcR2eflRz6l3PcI2r8fPCH3BElLQHDk',
                     'privateKey' => '-3CdhFOqjzixgAbUSa0Zv9zi-dwDVmWO7672aBxSFPQ',
                 ],
                 ContentEncoding::aes128gcm,
                 1475452165,
-                'vapid t=eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwOi8vcHVzaC5jb20iLCJleHAiOjE0NzU0NTIxNjUsInN1YiI6Imh0dHA6Ly90ZXN0LmNvbSJ9.4F3ZKjeru4P9XM20rHPNvGBcr9zxhz8_ViyNfe11_xcuy7A9y7KfEPt6yuNikyW7eT9zYYD5mQZubDGa-5H2cA, k=BA6jvk34k6YjElHQ6S0oZwmrsqHdCNajxcod6KJnI77Dagikfb--O_kYXcR2eflRz6l3PcI2r8fPCH3BElLQHDk',
+                'vapid t=eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9.eyJhdWQiOiJodHRwOi8vcHVzaC5jb20iLCJleHAiOjE0NzU0NTIxNjUsInN1YiI6Imh0dHBzOi8vdGVzdC5jb20ifQ.kXXd2JaK1583Le1mheFKEKSF1I4rYFKvF0HKNXO8et-w2UYSc3d0pbsbN_sP17PvcsO_zT8XJZ-gbKWlCOGksw, k=BA6jvk34k6YjElHQ6S0oZwmrsqHdCNajxcod6KJnI77Dagikfb--O_kYXcR2eflRz6l3PcI2r8fPCH3BElLQHDk',
                 null,
             ],
         ];
@@ -88,5 +89,21 @@ final class VAPIDTest extends PHPUnit\Framework\TestCase
         $this->assertArrayHasKey('privateKey', $keys);
         $this->assertGreaterThanOrEqual(86, strlen($keys['publicKey']));
         $this->assertGreaterThanOrEqual(42, strlen($keys['privateKey']));
+    }
+
+    #[TestWith([[]])]
+    #[TestWith([['subject' => '']])]
+    #[TestWith([['subject' => 'test']])]
+    #[TestWith([['subject' => 'mailto:']])]
+    #[TestWith([['subject' => 'mailto:localhost']])]
+    #[TestWith([['subject' => 'https://']])]
+    #[TestWith([['subject' => 'https://example.com', 'pemFile' => '']])]
+    #[TestWith([['subject' => 'https://example.com', 'pemFile' => 'abc.pem']])]
+    #[TestWith([['subject' => 'https://example.com', 'pem' => '']])]
+    #[TestWith([['subject' => 'https://example.com', 'publicKey' => '']])]
+    public function testValidateException(array $vapid): void
+    {
+        $this->expectException(Exception::class);
+        VAPID::validate($vapid);
     }
 }
