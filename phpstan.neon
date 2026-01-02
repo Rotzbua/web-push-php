@@ -14,7 +14,6 @@ parameters:
               - src/MessageSentReport.php
               - src/Notification.php
               - src/Subscription.php
-              - src/Utils.php
               - src/VAPID.php
               - src/WebPush.php
         - path: tests/

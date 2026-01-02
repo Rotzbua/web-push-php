@@ -40,6 +40,9 @@ class Utils
         return $hexString;
     }
 
+    /**
+     * @return array{0: string, 1: string}
+     */
     public static function unserializePublicKey(string $data): array
     {
         $data = bin2hex($data);
@@ -49,10 +52,14 @@ class Utils
         $data = mb_substr($data, 2, null, '8bit');
         $dataLength = self::safeStrlen($data);
 
-        return [
-            hex2bin(mb_substr($data, 0, $dataLength / 2, '8bit')),
-            hex2bin(mb_substr($data, $dataLength / 2, null, '8bit')),
-        ];
+        $x = hex2bin(mb_substr($data, 0, $dataLength / 2, '8bit'));
+        $y = hex2bin(mb_substr($data, $dataLength / 2, null, '8bit'));
+
+        if ($x === false || $y === false) {
+            throw new \InvalidArgumentException('Invalid hex data for X/Y coordinate.');
+        }
+
+        return [$x, $y];
     }
 
     /**
