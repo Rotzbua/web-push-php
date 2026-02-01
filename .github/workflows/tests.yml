@@ -48,7 +48,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          openssl -v
+          openssl version
           composer install --prefer-dist
 
       - name: Setup node
