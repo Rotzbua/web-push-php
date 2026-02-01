@@ -1,0 +1,152 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug! Please fill out the form below to help us understand and resolve the issue.
+        
+        **Before submitting:**
+        - Have you read the [README](https://github.com/web-push-libs/web-push-php/blob/master/README.md) entirely?
+        - Have you searched [existing issues](https://github.com/web-push-libs/web-push-php/issues) to see if this has already been reported?
+        - Please test in at least two browsers (e.g., Chrome and Firefox) to help diagnose the problem.
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following
+      options:
+        - label: I have read the [README](https://github.com/web-push-libs/web-push-php/blob/master/README.md) entirely
+          required: true
+        - label: I have searched [existing issues](https://github.com/web-push-libs/web-push-php/issues) and this hasn't been reported yet
+          required: true
+        - label: I have tested in at least two browsers (e.g., Chrome and Firefox)
+          required: false
+
+  - type: dropdown
+    id: php-version
+    attributes:
+      label: PHP Version
+      description: Which version of PHP are you using?
+      options:
+        - "8.2"
+        - "8.3"
+        - "8.4"
+        - Other (please specify in additional context)
+    validations:
+      required: true
+
+  - type: input
+    id: library-version
+    attributes:
+      label: web-push-php Version
+      description: Which version of web-push-php are you using? (e.g., 9.0.0)
+      placeholder: "9.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: Which operating system are you using?
+      options:
+        - Linux
+        - Windows
+        - macOS
+        - Other (please specify in additional context)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: php-extensions
+    attributes:
+      label: PHP Extensions
+      description: Please confirm that you have the required PHP extensions installed and enabled
+      options:
+        - label: curl
+        - label: mbstring
+        - label: openssl (with elliptic curve support)
+        - label: gmp (optional, for performance)
+        - label: bcmath (optional, for performance)
+
+  - type: checkboxes
+    id: browsers
+    attributes:
+      label: Affected Browsers
+      description: Which browsers are experiencing the issue?
+      options:
+        - label: Chrome
+        - label: Firefox
+        - label: Firefox for Android
+        - label: Safari
+        - label: Safari for iOS
+        - label: Edge
+        - label: Opera
+        - label: Opera for Android
+        - label: Samsung Internet Browser
+        - label: Other (please specify in additional context)
+
+  - type: textarea
+    id: browser-versions
+    attributes:
+      label: Browser Versions
+      description: Please specify the browser versions (e.g., Chrome 120, Firefox Beta, Safari 17.2)
+      placeholder: "Chrome 120, Firefox 121"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: features-used
+    attributes:
+      label: Features Used
+      description: Which features are you using?
+      options:
+        - label: VAPID Authentication
+        - label: Sending with Payload
+        - label: Automatic Padding
+        - label: Custom TTL/Urgency/Topic
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Description
+      description: Please explain what behavior you are seeing
+      placeholder: Describe the bug or unexpected behavior...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: Please explain what you expected to happen
+      placeholder: Describe what you expected...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: |
+        Please provide a code sample or steps that reproduce the issue.
+        If there is a repository that reproduces the issue, please provide the link.
+      placeholder: |
+        1. Create a subscription with...
+        2. Send a notification using...
+        3. Observe that...
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (error messages, logs, screenshots, etc.)
+      placeholder: Any additional information...
+    validations:
+      required: false

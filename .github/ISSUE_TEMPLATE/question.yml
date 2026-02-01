@@ -1,0 +1,61 @@
+name: ❓ Question
+description: Ask a question or start a discussion
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question? We're here to help!
+        
+        **Before submitting:**
+        - Have you checked the [README](https://github.com/web-push-libs/web-push-php/blob/master/README.md)?
+        - Have you checked the FAQ section in the README?
+        - Consider using [GitHub Discussions](https://github.com/web-push-libs/web-push-php/discussions) for general questions
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following
+      options:
+        - label: I have read the [README](https://github.com/web-push-libs/web-push-php/blob/master/README.md) and FAQ
+          required: true
+        - label: I have searched [existing issues](https://github.com/web-push-libs/web-push-php/issues) and discussions
+          required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: "How do I..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide any relevant context about your question (code samples, what you've tried, etc.)
+      placeholder: "I'm trying to... and I've attempted..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (if relevant)
+      description: |
+        If your question is environment-specific, please provide details:
+        - PHP version
+        - web-push-php version
+        - Operating system
+        - Browser(s)
+      placeholder: |
+        PHP: 8.3
+        web-push-php: 9.0.0
+        OS: Ubuntu 22.04
+        Browser: Chrome 120
+    validations:
+      required: false
