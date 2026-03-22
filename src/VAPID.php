@@ -46,12 +46,35 @@ class VAPID
      */
     public static function validate(array $vapid): array
     {
-        if (!isset($vapid['subject'])) {
+        // The subject is optional according to the RFC but no browser vendor accept VAPID without it.
+        // https://www.rfc-editor.org/rfc/rfc8292#section-2.1
+        if (!isset($vapid['subject']) || !is_string($vapid['subject'])) {
+            throw new \ErrorException('[VAPID] You must provide a subject as string that is either a mailto: or a URL.');
+        }
+        $subject = $vapid['subject'];
+        if (str_starts_with($subject, 'mailto:')) {
+            $email = substr($subject, 7);
+            if (false === filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new \ErrorException('[VAPID] subject: mailto email is not valid.');
+            }
+        } elseif (str_starts_with($subject, 'https:')) {
+            if (false === filter_var($subject, FILTER_VALIDATE_URL)) {
+                throw new \ErrorException('[VAPID] subject: url is not valid.');
+            }
+        } else {
             throw new \ErrorException('[VAPID] You must provide a subject that is either a mailto: or a URL.');
         }
 
         if (isset($vapid['pemFile'])) {
-            $vapid['pem'] = file_get_contents($vapid['pemFile']);
+            $filename = $vapid['pemFile'];
+            if (!file_exists($filename)) {
+                throw new \ErrorException('Error loading PEM file: does not exist.');
+            }
+            if (!is_readable($filename)) {
+                throw new \ErrorException('Error loading PEM file: not readable.');
+            }
+
+            $vapid['pem'] = file_get_contents($filename);
 
             if (!$vapid['pem']) {
                 throw new \ErrorException('[VAPID] Error loading PEM file.');
@@ -93,7 +116,7 @@ class VAPID
         }
 
         return [
-            'subject' => $vapid['subject'],
+            'subject' => $subject,
             'publicKey' => $publicKey,
             'privateKey' => $privateKey,
         ];
