@@ -50,6 +50,7 @@
   "require-dev": {
     "friendsofphp/php-cs-fixer": "^v3.92.2",
     "guzzlehttp/psr7": "^2.7",
+    "php-http/guzzle7-adapter": "^1.1",
     "phpstan/phpstan": "^2.1.33",
     "phpstan/phpstan-deprecation-rules": "^2.0",
     "phpstan/phpstan-phpunit": "^2.0",
